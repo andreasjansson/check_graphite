@@ -24,10 +24,7 @@ import sys
 import re
 import argparse
 import requests
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import simplejson as json
 
 EXIT_OK         = 0
 EXIT_WARNING    = 1

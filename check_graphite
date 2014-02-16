@@ -71,6 +71,7 @@ def check(host, metric, warning_threshold, critical_threshold,
     value = apply_function(series, function)
 
     message = '%s = %s (%s over %s minutes)' % (metric, value, function, duration)
+    message = message.replace('|', '_') # everything after | is "performance info"
     info = 'critical %s %s' % ('<' if invert else '>', critical_threshold)
     if warning is not None:
         info += '\nwarning %s %s' % ('<' if invert else '>', warning_threshold)

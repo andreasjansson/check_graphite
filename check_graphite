@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import sys
+import re
 import argparse
 import requests
 try:
@@ -38,6 +39,10 @@ def check(host, metric, warning_threshold, critical_threshold,
 
     if not host.startswith('http'):
         host = 'http://%s' % host
+
+    critical_threshold = convert_si(critical_threshold)
+    if warning_threshold:
+        warning_threshold = convert_si(warning_threshold)
 
     if warning_threshold is not None and warning_threshold > critical_threshold:
         invert = True
@@ -62,7 +67,10 @@ def check(host, metric, warning_threshold, critical_threshold,
     except json.JSONDecodeError, e:
         critical('Could not decode JSON', r.content)
 
-    series = [x for x, t in data[0]['datapoints']]
+    series = [x for x, _ in data[0]['datapoints'] if x is not None]
+    if len(series) == 0:
+        critical('No data for %s' % metric)
+
     value = apply_function(series, function)
 
     message = '%s = %s (%s over %s minutes)' % (metric, value, function, duration)
@@ -111,12 +119,50 @@ def ok(message, info=None):
         print '\n%s' % info
     sys.exit(EXIT_OK)
 
+def unknown(message, info=None):
+    print 'UNKNOWN %s' % message
+    if info:
+        print '\n%s' % info
+    sys.exit(EXIT_UNKNOWN)
+
+SI_UNITS = {
+    'y': 1e-24,  # yocto
+    'z': 1e-21,  # zepto
+    'a': 1e-18,  # atto
+    'f': 1e-15,  # femto
+    'p': 1e-12,  # pico
+    'n': 1e-9,   # nano
+    'u': 1e-6,   # micro
+    'm': 1e-3,   # mili
+    'c': 1e-2,   # centi
+    'd': 1e-1,   # deci
+    '':  1,
+    'k': 1e3,    # kilo
+    'M': 1e6,    # mega
+    'G': 1e9,    # giga
+    'T': 1e12,   # tera
+    'P': 1e15,   # peta
+    'E': 1e18,   # exa
+    'Z': 1e21,   # zetta
+    'Y': 1e24,   # yotta
+}
+def convert_si(value):
+    if re.search('[0-9][a-zA-Z]$', value):
+        unit = value[-1]
+        value = value[:-1]
+    else:
+        unit = ''
+    try:
+        return float(value) * SI_UNITS[unit]
+    except ValueError, KeyError:
+        unknown('Failed to parse threshold %s%s' % (value, unit))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Nagios check for Graphite metrics')
     parser.add_argument('--host', '-o', required=True, help='Graphite host, e.g. graphite.example.com, https://1.2.3.4, graphite01:8080')
     parser.add_argument('--metric', '-m', required=True, help='Metric to check, e.g. web01.processes.fork_rate')
-    parser.add_argument('--critical', '-c', type=float, required=True, help='Critical threshold')
-    parser.add_argument('--warning', '-w', type=float, help='Warning threshold')
+    parser.add_argument('--critical', '-c', required=True, help='Critical threshold, e.g. 1.0, 3G')
+    parser.add_argument('--warning', '-w', help='Warning threshold, e.g. -1.1k, 20')
     parser.add_argument('--invert', '-i', action='store_true', help='Invert the check so that an alert is triggered if the value falls below the threshold. Invert is implied if warning threshold > critical threshold')
     parser.add_argument('--duration', '-d', type=int, default=5, help='Number of minutes of data to aggregate')
     parser.add_argument('--function', '-f', default='average', choices=['average', 'max', 'min', 'sum'], help='The aggregation function to apply to the time series')

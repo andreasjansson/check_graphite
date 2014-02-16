@@ -38,16 +38,15 @@ Usage:
 Example Nagios command:
 
     define command {
-        command_name  check_graphite
-        command_line  $USER32$/check_graphite --host graphite.mydomain:8008 --metric "$ARG1$" \
-            --critical $ARG2$ --warning $ARG3$ --user me --password changeme123 2>&1
+        command_name    check_graphite
+        command_line    $USER1$/check_graphite --host graphite.mydomain:8008 --metric "$ARG1$" --critical $ARG2$ --warning $ARG3$ --user me --password changeme123 2>&1
     }
 
 Example Nagios service:
 
     define service {
-        service_description  web01 load average
-        host_name            web01.mydomain
-        check_command        check_graphite!web01.load.load.shortterm!2.0!1.5
+        service_description    web01 load average
+        host_name              web01.mydomain
+        check_command          check_graphite!web01.load.load.shortterm!2.0!1.5
     }
 

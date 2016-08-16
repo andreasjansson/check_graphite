@@ -71,7 +71,10 @@ def check(host, metric, warning_threshold, critical_threshold,
     except json.JSONDecodeError, e:
         critical('Could not decode JSON', r.content)
 
-    series = [x for x, _ in data[0]['datapoints'] if x is not None]
+    try:
+        series = [x for x, _ in data[0]['datapoints'] if x is not None]
+    except IndexError: # metric does not exist
+        critical('Metric %s not found' % metric)
     if len(series) == 0:
         critical('No data for %s' % metric)
 
